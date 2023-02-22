@@ -12,6 +12,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Windows.Forms;
 //using mzxrules.ZActor;
+using System.Runtime.InteropServices;
 
 namespace Experimental
 {
@@ -27,6 +28,7 @@ namespace Experimental
         public TestForm()
         {
             InitializeComponent();
+            AllocConsole();
         }
 
         public void OutputText(string text)
@@ -152,6 +154,11 @@ namespace Experimental
                 new FuncSelector("Add Col to MQ Json", Get.MQJsonImportAndPatch, ORom.Build.N0, ORom.Build.MQU),
                 new FuncSelector("Add Map Data to MQ Json", Get.ImportMapData, ORom.Build.N0, ORom.Build.MQU),
                 new FuncSelector("DeflateStream Compression Test", DeflateStreamCompress),
+                new FuncSelector("Compare GQ", Get.GQRandoCompareHeaders,  ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Compare GQ Collision" , Get.GQCompareCollision, ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Dump GQ Json", Get.OutputGQJson, ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Add Col to GQ Json", Get.GQJsonImportAndPatch, ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Add Map Data to GQ Json", Get.GQImportMapData, ORom.Build.N0, ORom.Build.GQU),
             };
         }
 
@@ -689,5 +696,8 @@ namespace Experimental
             return null;
         }
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool AllocConsole();
     }
 }

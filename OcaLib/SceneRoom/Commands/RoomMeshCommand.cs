@@ -95,9 +95,10 @@ namespace mzxrules.OcaLib.SceneRoom.Commands
             public override string ToString()
             {
                 string result = $"{Type} - Display Lists {Entries:D2} Offset {Start}";
-                foreach(var item in DisplayLists)
+                for (var i = 0; i < DisplayLists.Count; i++)
                 {
-                    result += $"{Environment.NewLine}  {item}";
+                    var item = DisplayLists[i];
+                    result += $"{Environment.NewLine} {Start + 8*i : X8} {item}";
                 }
                 return result;
             }
@@ -143,9 +144,10 @@ namespace mzxrules.OcaLib.SceneRoom.Commands
                 {
                     result += $"{Environment.NewLine} Background Offset {bgAddr}";
                 }
-                foreach (var item in Backgrounds)
+                for (var i = 0; i < Backgrounds.Count; i++)
                 {
-                    result += $"{Environment.NewLine}  {item}";
+                    var item = Backgrounds[i];
+                    result += $"{Environment.NewLine} {Start + 8 * i: X8} {item}";
                 }
                 return result;
             }

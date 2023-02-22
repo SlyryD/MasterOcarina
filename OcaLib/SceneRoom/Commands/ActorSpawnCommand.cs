@@ -44,9 +44,10 @@ namespace mzxrules.OcaLib.SceneRoom.Commands
             string result;
 
             result = ToString();
-            foreach (ActorSpawn a in ActorList)
+            for (var i = 0; i < ActorList.Count; i++)
             {
-                result += Environment.NewLine + a.Print();
+                ActorSpawn a = (ActorSpawn)ActorList[i];
+                result += Environment.NewLine + (SegmentAddress.Offset + 16*i).ToString("X8") + " " + a.Print();
             }
             return result;
         }

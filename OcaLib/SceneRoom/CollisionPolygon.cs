@@ -215,6 +215,22 @@ namespace mzxrules.OcaLib.SceneRoom
                 Data[i] = d;
             }
         }
+
+        public bool AreDataIdentical(CollisionWaterBox other)
+        {
+            if (Data.Length != other.Data.Length)
+            {
+                return false;
+            }
+
+            if (!Data.SequenceEqual(other.Data))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         public override string ToString()
         {
             return string.Join(", ", Data);

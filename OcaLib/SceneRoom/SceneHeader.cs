@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System;
 
 namespace mzxrules.OcaLib.SceneRoom
 {   
@@ -50,6 +51,8 @@ namespace mzxrules.OcaLib.SceneRoom
 
             while (KeepReading)
             {
+                Console.Out.Write((Offset + br.BaseStream.Position).ToString("X8") + " ");
+
                 SceneWord command = new SceneWord();
                 br.Read(command, 0, 8);
 
@@ -220,10 +223,10 @@ namespace mzxrules.OcaLib.SceneRoom
                 cmd = (HeaderCommands)command.Code;
                 if (cmd != HeaderCommands.End)
                 {
-                    s.Append($"{(int)cmd:X2}: ");
+                    s.Append($"{command.OffsetFromFile:X8} {(int)cmd:X2}: ");
 
                     if (this[cmd] != null)
-                        s.AppendLine(this[cmd].Read());
+                        s.AppendLine($"\t{this[cmd].Read()}".Replace(Environment.NewLine, $"{Environment.NewLine}\t"));
                 }
                 else
                     break;

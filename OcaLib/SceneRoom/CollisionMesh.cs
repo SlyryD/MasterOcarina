@@ -11,8 +11,8 @@ namespace mzxrules.OcaLib.SceneRoom
     {
         public const int HEADER_SIZE = 0x2C;
         const int WATER_BOX_RECORD_SIZE = 0x10;
-        /* 0x00 */ Vector3<short> BoundsMin = new Vector3<short>();
-        /* 0x06 */ Vector3<short> BoundsMax = new Vector3<short>();
+        /* 0x00 */ public Vector3<short> BoundsMin = new Vector3<short>();
+        /* 0x06 */ public Vector3<short> BoundsMax = new Vector3<short>();
         /* 0x0C */ public short Vertices;
         /* 0x10 */ public SegmentAddress VertexArray;
         /* 0x14 */ public short Polys;
@@ -33,8 +33,8 @@ namespace mzxrules.OcaLib.SceneRoom
         SegmentAddress CameraDataMin = 0;
         
 
-        int PolyTypes = 0;
-        int CameraDatas = 0;
+        public int PolyTypes = 0;
+        public int CameraDatas = 0;
 
         bool HasCameraData => CameraDataArray.Segment == 0 && CameraDataArray.Offset == 0;
 
@@ -217,6 +217,23 @@ namespace mzxrules.OcaLib.SceneRoom
                     return end - CameraDataMin.Offset;
             else
                 return end - VertexArray.Offset;
+        }
+
+        public override string ToString()
+        {
+            return string.Format(
+                "BoundsMin: {0}, BoundsMax: {1}, Vertices: {2}, VertexArray: {3}, Polys: {4}, PolyArray: {5}, PolyTypeArray: {6}, CameraDataArray: {7}, WaterBoxes: {8}, WaterBoxesArray: {9}",
+                BoundsMin,
+                BoundsMax,
+                Vertices,
+                VertexArray,
+                Polys,
+                PolyArray,
+                PolyTypeArray,
+                CameraDataArray,
+                WaterBoxes,
+                WaterBoxesArray
+            );
         }
     }
 }

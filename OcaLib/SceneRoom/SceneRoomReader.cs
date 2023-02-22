@@ -46,6 +46,7 @@ namespace mzxrules.OcaLib.SceneRoom
             //    && id == 6)
             //    SpiritHack.LoadSpiritSceneHeader(br, scene);
             //else
+            Console.Out.WriteLine($"{scene.VirtualAddress:X8} Scene {scene.Id} =============");
             LoadISceneRoomHeader(br, scene);
             return scene;
         }
@@ -86,6 +87,7 @@ namespace mzxrules.OcaLib.SceneRoom
             header = item.Header;
 
             //Load the root header
+            Console.Out.WriteLine($"00000000 Header");
             header.Load(br, 0);
             header.InitializeAssets(br);
 
@@ -95,6 +97,7 @@ namespace mzxrules.OcaLib.SceneRoom
                 {
                     if (header.Alternate.Headers[i] != null)
                     {
+                        Console.Out.WriteLine($"{header.Alternate.Offsets[i].Offset:X8} Alternate Header");
                         header.Alternate.Headers[i].Load(br, header.Alternate.Offsets[i].Offset);
                         header.Alternate.Headers[i].InitializeAssets(br);
                     }

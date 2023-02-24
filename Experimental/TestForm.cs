@@ -16,7 +16,7 @@ using System.Runtime.InteropServices;
 
 namespace Experimental
 {
-    interface IExperimentFace
+    public interface IExperimentFace
     {
         bool GetFileDialogs(out List<string> files, params string[] args);
         bool GetFileDialogs(out List<string> files, params RomVersion[] args);
@@ -159,6 +159,11 @@ namespace Experimental
                 new FuncSelector("Dump GQ Json", Get.OutputGQJson, ORom.Build.N0, ORom.Build.GQU),
                 new FuncSelector("Add Col to GQ Json", Get.GQJsonImportAndPatch, ORom.Build.N0, ORom.Build.GQU),
                 new FuncSelector("Add Map Data to GQ Json", Get.GQImportMapData, ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Compare GQ Overworld", Get.GQOverworldRandoCompareHeaders,  ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Compare GQ Overworld Collision" , Get.GQOverworldCompareCollision, ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Dump GQ Overworld Json", Get.OutputGQOverworldJson, ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Add Col to GQ Overworld Json", Get.GQOverworldJsonImportAndPatch, ORom.Build.N0, ORom.Build.GQU),
+                new FuncSelector("Add Map Data to GQ Overworld Json", Get.GQOverworldImportMapData, ORom.Build.N0, ORom.Build.GQU),
             };
         }
 

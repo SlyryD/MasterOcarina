@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Runtime.Serialization;
 using mzxrules.Helper;
 using System.IO;
@@ -18,21 +17,43 @@ namespace Experimental.Data
     static partial class Get
     {
         public static void MQRandoCompareHeaders(IExperimentFace face, List<string> filePath)
-            => MQUtils.MQRandoCompareHeaders(face, filePath);
+        {
+            MQUtils.CompareHeaders(face, MQGetInput(filePath));
+        }
 
         public static void CompareCollision(IExperimentFace face, List<string> filePath)
-            => MQUtils.CompareCollision(face, filePath); 
+        {
+            MQUtils.CompareCollision(face, MQGetInput(filePath));
+        }
 
         public static void OutputMQJson(IExperimentFace face, List<string> filePath)
-            => MQUtils.OutputMQJson(face, filePath);
-
+        {
+            MQUtils.OutputJson(face, MQGetInput(filePath));
+        }
 
         public static void MQJsonImportAndPatch(IExperimentFace face, List<string> filePath)
-            => MQUtils.MQJsonImportAndPatch(face, filePath);
+        {
+            MQUtils.ImportAndPatchJson(face, MQGetInput(filePath));
+        }
 
         public static void ImportMapData(IExperimentFace face, List<string> filePath)
-            => MQUtils.ImportMapData(face, filePath);
+        {
+            MQUtils.ImportMapData(face, MQGetInput(filePath));
+        }
 
+        private static MQUtilsInput MQGetInput(List<string> filePath) {
+            return new MQUtilsInput()
+            {
+                N0 = new ORom(filePath[0], ORom.Build.N0),
+                MQ = new ORom(filePath[1], ORom.Build.MQU),
+                MQJson = "mqu.json",
+                SceneNumbers = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13 },
+                DungMarkVrom = 0xBE78D8, // n0 0xBFABBC
+                DungMarkVram = 0x8085CFF8, // n0 0x8085D2DC
+                FloorIndex = 0xB6AFC4, // n0 0xB6C934
+                FloorData = 0xBB49E0 // n0 0xBC7E00
+            };
+        }
     }
 
     public class MQJson
@@ -96,14 +117,18 @@ namespace Experimental.Data
 
                 Id = id;
 
+                Console.Out.WriteLine(File.Name);
                 SceneWord cmd = new SceneWord();
                 do
                 {
+                    Console.Out.Write((start + br.BaseStream.Position).ToString("X2") + " ");
                     br.Read(cmd, 0, 8);
 
                     var seekback = br.BaseStream.Position;
                     HeaderCommands code = (HeaderCommands)cmd.Code;
-
+                    Console.Out.Write(Enum.GetName(typeof(HeaderCommands), cmd.Code) + " ");
+                    Console.Out.Write(cmd.Data1.ToString("X2") + " ");
+                    Console.Out.WriteLine(cmd.Data2.ToString("X8") + " ");
 
                     if (code == HeaderCommands.PathList)
                     {
@@ -246,78 +271,148 @@ namespace Experimental.Data
             public bool IsLarger { get; set; }
 
             [DataMember(Order = 2)]
-            public List<ColPoly_MQJson> Polys = new List<ColPoly_MQJson>();
+            public ColVertex_MQJson MinVertex { get; set; }
 
             [DataMember(Order = 3)]
-            public List<ColMat_MQJson> PolyTypes = new List<ColMat_MQJson>();
+            public ColVertex_MQJson MaxVertex { get; set; }
 
             [DataMember(Order = 4)]
-            public List<ColCam_MQJson> Cams = new List<ColCam_MQJson>();
+            public int NumVertices { get; set; }
 
             [DataMember(Order = 5)]
+            public List<ColVertex_MQJson> Vertices = new List<ColVertex_MQJson>();
+
+            [DataMember(Order = 6)]
+            public int NumPolys { get; set; }
+
+            [DataMember(Order = 7)]
+            public List<ColPoly_MQJson> Polys = new List<ColPoly_MQJson>();
+
+            [DataMember(Order = 8)]
+            public int NumPolyTypes { get; set; }
+
+            [DataMember(Order = 9)]
+            public List<ColMat_MQJson> PolyTypes = new List<ColMat_MQJson>();
+
+            [DataMember(Order = 10)]
+            public int NumCams { get; set; }
+
+            [DataMember(Order = 11)]
+            public List<ColCam_MQJson> Cams = new List<ColCam_MQJson>();
+
+            [DataMember(Order = 12)]
+            public int NumWaterBoxes { get; set; }
+
+            [DataMember(Order = 13)]
             public List<ColWaterBox_MQJson> WaterBoxes = new List<ColWaterBox_MQJson>();
 
-            public Col_MQJson(CollisionMesh n0, CollisionMesh mq)
+            public Col_MQJson(CollisionMesh n0, CollisionMesh MQ)
             {
-                IsLarger = (n0.GetFileSize() < mq.GetFileSize());
+                IsLarger = (n0.GetFileSize() < MQ.GetFileSize());
 
-                for (int i = 0; i < mq.PolyList.Count; i++)
+                MinVertex = new ColVertex_MQJson(-1, MQ.BoundsMin.x, MQ.BoundsMin.y, MQ.BoundsMin.z);
+                MaxVertex = new ColVertex_MQJson(-1, MQ.BoundsMax.x, MQ.BoundsMax.y, MQ.BoundsMax.z);
+
+                NumVertices = MQ.Vertices;
+
+                for (int i = 0; i < MQ.VertexList.Count; i++)
+                {
+                    var MQVertex = MQ.VertexList[i];
+                    if (i >= n0.VertexList.Count || !n0.VertexList[i].Equals(MQVertex))
+                    {
+                        Vertices.Add(new ColVertex_MQJson(i, MQVertex.x, MQVertex.y, MQVertex.z));
+                    }
+                }
+
+                NumPolys = MQ.Polys;
+
+                for (int i = 0; i < MQ.PolyList.Count; i++)
                 {
                     var n0poly = n0.PolyList[i];
-                    var mqpoly = mq.PolyList[i];
+                    var MQpoly = MQ.PolyList[i];
 
-                    if (!n0poly.Equals(mqpoly))
+                    if (!n0poly.Equals(MQpoly))
                     {
-                        Polys.Add(new ColPoly_MQJson(i, mqpoly.Type, mqpoly.VertexFlagsA));
+                        Polys.Add(new ColPoly_MQJson(i, MQpoly.Type, MQpoly.VertexFlagsA));
                     }
                 }
 
-                for (int i = 0; i < mq.PolyTypeList.Count; i++)
+                NumPolyTypes = MQ.PolyTypes;
+
+                for (int i = 0; i < MQ.PolyTypeList.Count; i++)
                 {
-                    var mqpolytype = mq.PolyTypeList[i];
+                    var MQpolytype = MQ.PolyTypeList[i];
 
                     if (!(i < n0.PolyTypeList.Count)
-                        || !n0.PolyTypeList[i].Equals(mqpolytype))
+                        || !n0.PolyTypeList[i].Equals(MQpolytype))
                     {
-                        PolyTypes.Add(new ColMat_MQJson(i, mqpolytype.HighWord, mqpolytype.LowWord));
+                        PolyTypes.Add(new ColMat_MQJson(i, MQpolytype.HighWord, MQpolytype.LowWord));
                     }
                 }
 
-                for (int i = 0; i < mq.CameraDataList.Count; i++)
+                NumCams = MQ.CameraDatas;
+
+                for (int i = 0; i < MQ.CameraDataList.Count; i++)
                 {
-                    var mqcam = mq.CameraDataList[i];
+                    var MQcam = MQ.CameraDataList[i];
                     ColCam_MQJson cam = null;
-                    if (mqcam.PositionAddress == 0)
+                    if (MQcam.PositionAddress == 0)
                     {
-                        cam = new ColCam_MQJson(mqcam.CameraS, mqcam.NumCameras, -1);
+                        cam = new ColCam_MQJson(MQcam.CameraS, MQcam.NumCameras, -1);
                     }
                     else
                     {
                         for (int j = 0; j < n0.CameraDataList.Count; j++)
                         {
                             var n0cam = n0.CameraDataList[j];
-                            if (n0cam.IsPositionListIdentical(mqcam))
+                            if (n0cam.IsPositionListIdentical(MQcam))
                             {
-                                cam = new ColCam_MQJson(mqcam.CameraS, mqcam.NumCameras, j);
+                                cam = new ColCam_MQJson(MQcam.CameraS, MQcam.NumCameras, j);
                                 break;
                             }
                         }
                     }
                     if (cam == null)
                     {
-                        throw new Exception("BLERG");
+                        throw new Exception("Did not find camera position in n0 matching current one in MQ");
                     }
                     Cams.Add(cam);
                 }
 
-                for (int i = 0; i < mq.WaterBoxList.Count; i++)
+                NumWaterBoxes = MQ.WaterBoxes;
+
+                for (int i = 0; i < MQ.WaterBoxList.Count; i++)
                 {
-                    var mqWaterBox = mq.WaterBoxList[i];
-                    if (i >= n0.WaterBoxList.Count || !n0.WaterBoxList[i].AreDataIdentical(mqWaterBox))
+                    var MQWaterBox = MQ.WaterBoxList[i];
+                    if (i >= n0.WaterBoxList.Count || !n0.WaterBoxList[i].AreDataIdentical(MQWaterBox))
                     {
-                        WaterBoxes.Add(new ColWaterBox_MQJson(i, mqWaterBox.Data));
+                        WaterBoxes.Add(new ColWaterBox_MQJson(i, MQWaterBox.Data));
                     }
                 }
+            }
+        }
+
+        [DataContract(Name = "Vertex")]
+        public class ColVertex_MQJson
+        {
+            [DataMember(Order = 1)]
+            public int Id { get; set; }
+
+            [DataMember(Order = 2)]
+            public short X { get; set; }
+
+            [DataMember(Order = 3)]
+            public short Y { get; set; }
+
+            [DataMember(Order = 4)]
+            public short Z { get; set; }
+
+            public ColVertex_MQJson(int id, short x, short y, short z)
+            {
+                Id = id;
+                X = x;
+                Y = y;
+                Z = z;
             }
 
         }
@@ -394,11 +489,7 @@ namespace Experimental.Data
             }
         }
 
-    }
-
-    class MQUtils
-    {
-        static class Actor_MQJson
+        private static class Actor_MQJson
         {
             public static string Read(BinaryReader read)
             {
@@ -412,18 +503,26 @@ namespace Experimental.Data
                 return string.Join(" ", result);
             }
         }
+    }
 
+    public class MQUtilsInput {
+        public Rom N0 { get; set; }
+        public Rom MQ { get; set; }
+        public string MQJson { get; set; }
+        public int[] SceneNumbers { get; set; }
+        public int DungMarkVrom { get; set; }
+        public N64Ptr DungMarkVram { get; set; }
+        public int FloorIndex { get; set; }
+        public int FloorData { get; set; }
+    }
 
-        static readonly int[] MQRandoScenes = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13 };
-
-        public static void MQRandoCompareHeaders(IExperimentFace face, List<string> filePath)
+    public class MQUtils
+    {
+        public static void CompareHeaders(IExperimentFace face, MQUtilsInput input)
         {
-            Rom n0 = new ORom(filePath[0], ORom.Build.N0);
-            Rom mq = new ORom(filePath[1], ORom.Build.MQU);
-
             StringWriter sw = new StringWriter();
 
-            foreach (Rom rom in new Rom[] { n0, mq })
+            foreach (Rom rom in new Rom[] { input.N0, input.MQ })
             {
                 for (int i = 0; i < 16; i++)
                 {
@@ -480,130 +579,15 @@ namespace Experimental.Data
             face.OutputText(sw.ToString());
         }
 
-        public static void OutputMQJson(IExperimentFace face, List<string> filePath)
+        public static void CompareCollision(IExperimentFace face, MQUtilsInput input)
         {
-            Rom n0 = new ORom(filePath[0], ORom.Build.N0);
-            Rom mq = new ORom(filePath[1], ORom.Build.MQU);
-
-
-            var rom_scenes = new List<List<Scene_MQJson>>();
-            List<Scene_MQJson> scenes;
-
-            foreach (Rom rom in new Rom[] { n0, mq })
-            {
-                scenes = new List<Scene_MQJson>();
-                foreach (int sceneId in MQRandoScenes)
-                {
-                    if (sceneId == 12)
-                        continue;
-
-                    var sceneFile = rom.Files.GetSceneFile(sceneId);
-                    using (BinaryReader br = new BinaryReader(sceneFile))
-                    {
-                        var va = sceneFile.Record.VRom;
-                        var scene = new Scene_MQJson(br, sceneId, va.Start, va.End);
-
-                        br.BaseStream.Position = scene.RoomsAddress.Offset;
-
-                        for (int roomId = 0; roomId < scene.RoomsCount; roomId++)
-                        {
-                            int start = br.ReadBigInt32();
-                            int end = br.ReadBigInt32();
-
-                            var roomFile = rom.Files.GetFile(start);
-
-                            var room = new Room_MQJson(new BinaryReader(roomFile), sceneId, roomId, start, end);
-                            scene.Rooms.Add(room);
-                        }
-                        scenes.Add(scene);
-                    }
-                }
-                rom_scenes.Add(scenes);
-            }
-
-            var n0_scenes = rom_scenes[0];
-            scenes = rom_scenes[1];
-            SetN0Addresses(scenes, n0_scenes);
-
-            MemoryStream ms = SerializeScenes(scenes);
-            StreamReader sr = new StreamReader(ms);
-            string json = sr.ReadToEnd();
-
-            face.OutputText(json);
-
-        }
-
-        private static MemoryStream SerializeScenes(List<Scene_MQJson> scenes)
-        {
-            DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(List<Scene_MQJson>));
-            MemoryStream ms = new MemoryStream();
-
-            ser.WriteObject(ms, scenes);
-            ms.Position = 0;
-            return ms;
-        }
-
-        public static void MQJsonImportAndPatch(IExperimentFace face, List<string> filePath)
-        {
-            Rom n0 = new ORom(filePath[0], ORom.Build.N0);
-            Rom mq = new ORom(filePath[1], ORom.Build.MQU);
-
-            List<Scene_MQJson> scenes = Load_Scene_MQJson();
-
-            foreach (var scene in scenes)
-            {
-                if (!MQRandoScenes.Contains(scene.Id))
-                    continue;
-
-                var n0_scene = SceneRoomReader.InitializeScene(n0, scene.Id);
-                var mq_scene = SceneRoomReader.InitializeScene(mq, scene.Id);
-
-                CollisionMesh n0_mesh = ((CollisionCommand)n0_scene.Header[HeaderCommands.Collision]).Mesh;
-                CollisionMesh mq_mesh = ((CollisionCommand)mq_scene.Header[HeaderCommands.Collision]).Mesh;
-
-                var delta = new Col_MQJson(n0_mesh, mq_mesh);
-                scene.ColDelta = delta;
-            }
-            MemoryStream s = SerializeScenes(scenes);
-            StreamReader sr = new StreamReader(s);
-            face.OutputText(sr.ReadToEnd());
-
-        }
-
-        private static List<Scene_MQJson> Load_Scene_MQJson()
-        {
-            DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(List<Scene_MQJson>));
-
-            List<Scene_MQJson> scenes;
-            using (FileStream fs = new FileStream("mqu.json", FileMode.Open))
-            {
-                scenes = (List<Scene_MQJson>)ser.ReadObject(fs);
-            }
-
-            return scenes;
-        }
-
-        static void PrintList<T>(StringBuilder sb, List<T> list)
-        {
-            for (int i = 0; i < list.Count; i++)
-            {
-                var item = list[i];
-                sb.AppendLine($"{i:X4} {item.ToString()}");
-            }
-        }
-
-        public static void CompareCollision(IExperimentFace face, List<string> filePath)
-        {
-            Rom n0 = new ORom(filePath[0], ORom.Build.N0);
-            Rom mq = new ORom(filePath[1], ORom.Build.MQU);
-
             StringBuilder sb_n0 = new StringBuilder();
             StringBuilder sb_mq = new StringBuilder();
 
-            foreach (int id in MQRandoScenes)
+            foreach (int id in input.SceneNumbers)
             {
-                var n0_scene = SceneRoomReader.InitializeScene(n0, id);
-                var mq_scene = SceneRoomReader.InitializeScene(mq, id);
+                var n0_scene = SceneRoomReader.InitializeScene(input.N0, id);
+                var mq_scene = SceneRoomReader.InitializeScene(input.MQ, id);
 
                 CollisionMesh n0_mesh = ((CollisionCommand)n0_scene.Header[HeaderCommands.Collision]).Mesh;
                 CollisionMesh mq_mesh = ((CollisionCommand)mq_scene.Header[HeaderCommands.Collision]).Mesh;
@@ -628,7 +612,6 @@ namespace Experimental.Data
 
                 PrintList(sb_n0, n0_mesh.WaterBoxList);
                 PrintList(sb_mq, mq_mesh.WaterBoxList);
-
 
                 for (int i = 0; i < n0_mesh.VertexList.Count; i++)
                 {
@@ -663,7 +646,125 @@ namespace Experimental.Data
                 + $"{Environment.NewLine}~SPLIT{Environment.NewLine}"
                 + sb_mq.ToString();
             face.OutputText(result);
+        }
 
+        public static void OutputJson(IExperimentFace face, MQUtilsInput input)
+        {
+            var rom_scenes = new List<List<Scene_MQJson>>();
+            List<Scene_MQJson> scenes;
+
+            foreach (Rom rom in new Rom[] { input.N0, input.MQ })
+            {
+                scenes = new List<Scene_MQJson>();
+                foreach (int sceneId in input.SceneNumbers)
+                {
+                    var sceneFile = rom.Files.GetSceneFile(sceneId);
+                    using (BinaryReader br = new BinaryReader(sceneFile))
+                    {
+                        var va = sceneFile.Record.VRom;
+                        var scene = new Scene_MQJson(br, sceneId, va.Start, va.End);
+
+                        br.BaseStream.Position = scene.RoomsAddress.Offset;
+
+                        for (int roomId = 0; roomId < scene.RoomsCount; roomId++)
+                        {
+                            int start = br.ReadBigInt32();
+                            int end = br.ReadBigInt32();
+
+                            var roomFile = rom.Files.GetFile(start);
+
+                            var room = new Room_MQJson(new BinaryReader(roomFile), sceneId, roomId, start, end);
+                            scene.Rooms.Add(room);
+                        }
+                        scenes.Add(scene);
+                    }
+                }
+                rom_scenes.Add(scenes);
+            }
+
+            var n0_scenes = rom_scenes[0];
+            scenes = rom_scenes[1];
+            SetN0Addresses(scenes, n0_scenes);
+
+            MemoryStream ms = SerializeScenes(scenes);
+            StreamReader sr = new StreamReader(ms);
+            string json = sr.ReadToEnd();
+
+            face.OutputText(json);
+        }
+
+        public static void ImportAndPatchJson(IExperimentFace face, MQUtilsInput input)
+        {
+            List<Scene_MQJson> scenes = Load_Scene_MQJson(input.MQJson);
+
+            foreach (var scene in scenes)
+            {
+                if (!input.SceneNumbers.Contains(scene.Id))
+                    continue;
+
+                var n0_scene = SceneRoomReader.InitializeScene(input.N0, scene.Id);
+                var mq_scene = SceneRoomReader.InitializeScene(input.MQ, scene.Id);
+
+                CollisionMesh n0_mesh = ((CollisionCommand)n0_scene.Header[HeaderCommands.Collision]).Mesh;
+                CollisionMesh mq_mesh = ((CollisionCommand)mq_scene.Header[HeaderCommands.Collision]).Mesh;
+
+                var delta = new Col_MQJson(n0_mesh, mq_mesh);
+                scene.ColDelta = delta;
+            }
+            MemoryStream s = SerializeScenes(scenes);
+            StreamReader sr = new StreamReader(s);
+            face.OutputText(sr.ReadToEnd());
+        }
+
+        public static void ImportMapData(IExperimentFace face, MQUtilsInput input)
+        {
+            var scenes = Load_Scene_MQJson(input.MQJson);
+            var Minimaps = GetDungeonMinimaps(input.MQ, input.DungMarkVrom, input.DungMarkVram);
+            var FloorMap = GetDungeonFloorData(input.MQ, input.FloorIndex, input.FloorData);
+
+            for (int i = 0; i < 10; i++)
+            {
+                scenes[i].Floormaps = FloorMap[i];
+                scenes[i].Minimaps = Minimaps[i];
+            }
+
+            var ms = SerializeScenes(scenes);
+
+            StreamReader sr = new StreamReader(ms);
+
+            face.OutputText(sr.ReadToEnd());
+        }
+
+        private static MemoryStream SerializeScenes(List<Scene_MQJson> scenes)
+        {
+            DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(List<Scene_MQJson>));
+            MemoryStream ms = new MemoryStream();
+
+            ser.WriteObject(ms, scenes);
+            ms.Position = 0;
+            return ms;
+        }
+
+        private static List<Scene_MQJson> Load_Scene_MQJson(string filePath)
+        {
+            DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(List<Scene_MQJson>));
+
+            List<Scene_MQJson> scenes;
+            using (FileStream fs = new FileStream(filePath, FileMode.Open))
+            {
+                scenes = (List<Scene_MQJson>)ser.ReadObject(fs);
+            }
+
+            return scenes;
+        }
+
+        private static void PrintList<T>(StringBuilder sb, List<T> list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                var item = list[i];
+                sb.AppendLine($"{i:X4} {item.ToString()}");
+            }
         }
 
         private static void SetN0Addresses(List<Scene_MQJson> scenes, List<Scene_MQJson> n0_scenes)
@@ -685,41 +786,6 @@ namespace Experimental.Data
                     rA.File.End = rB.File.End;
                 }
             }
-        }
-
-
-
-        public static void ImportMapData(IExperimentFace face, List<string> files)
-        {
-            Rom n0 = new ORom(files[0], ORom.Build.N0);
-            Rom mq = new ORom(files[1], ORom.Build.MQU);
-
-            var scenes = Load_Scene_MQJson();
-
-            const int dung_mark_vrom_mq = 0xBE78D8;
-            N64Ptr dung_mark_vram_mq = 0x8085CFF8;
-
-            var Minimaps = GetDungeonMinimaps(mq, dung_mark_vrom_mq, dung_mark_vram_mq);
-
-            //const int floor_index_n0 = 0xB6C934;
-            //const int floor_data_n0 = 0xBC7E00;
-
-            const int floor_index_mq = 0xB6AFC4;
-            const int floor_data_mq = 0xBB49E0;
-
-            var FloorMap = GetDungeonFloorData(mq, floor_index_mq, floor_data_mq);
-
-            for (int i = 0; i < 10; i++)
-            {
-                scenes[i].Floormaps = FloorMap[i];
-                scenes[i].Minimaps = Minimaps[i];
-            }
-
-            var ms = SerializeScenes(scenes);
-
-            StreamReader sr = new StreamReader(ms);
-            
-            face.OutputText(sr.ReadToEnd());
         }
 
         private static List<List<DungeonMinimap>> GetDungeonMinimaps(Rom rom, int dung_mark_vrom, N64Ptr dung_mark_vram)
@@ -800,7 +866,7 @@ namespace Experimental.Data
             }
 
             //build dungeon list
-            for (int sceneId = 0; sceneId < floorIndices.Count-1; sceneId++)
+            for (int sceneId = 0; sceneId < floorIndices.Count - 1; sceneId++)
             {
                 int index = floorIndices[sceneId];
                 int end = floorIndices[sceneId + 1];
@@ -815,13 +881,6 @@ namespace Experimental.Data
             }
 
             return result;
-        }
-
-
-
-        public static void GetActors(IExperimentFace face, List<string> files)
-        {
-
         }
     }
 }
